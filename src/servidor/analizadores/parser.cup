@@ -1,0 +1,1069 @@
+package servidor.analizadores;
+
+import java.util.ArrayList;
+import java_cup.runtime.Symbol;
+import servidor.compilador.Constantes;
+import servidor.compilador.Control;
+import servidor.compilador.Ubicacion;
+import servidor.compilador.expresion.Expresion;
+import servidor.compilador.expresion.aritmetica.Division;
+import servidor.compilador.expresion.aritmetica.Modulo;
+import servidor.compilador.expresion.aritmetica.Multiplicacion;
+import servidor.compilador.expresion.aritmetica.Potencia;
+import servidor.compilador.expresion.aritmetica.Resta;
+import servidor.compilador.expresion.aritmetica.Restau;
+import servidor.compilador.expresion.aritmetica.Suma;
+import servidor.compilador.expresion.logica.And;
+import servidor.compilador.expresion.logica.Nand;
+import servidor.compilador.expresion.logica.Nor;
+import servidor.compilador.expresion.logica.Not;
+import servidor.compilador.expresion.logica.Or;
+import servidor.compilador.expresion.relacional.Distinto;
+import servidor.compilador.expresion.relacional.Igual;
+import servidor.compilador.expresion.relacional.RelacionalSimple;
+import servidor.compilador.expresion.valor.Atomo;
+import servidor.compilador.expresion.valor.acceso.Acceso;
+import servidor.compilador.expresion.valor.acceso.AccesoArreglo;
+import servidor.compilador.expresion.valor.acceso.Elemento;
+import servidor.compilador.expresion.valor.acceso.Identificador;
+import servidor.compilador.expresion.valor.acceso.Llamada;
+import servidor.compilador.expresion.valor.nativas.NCharat;
+import servidor.compilador.expresion.valor.nativas.NEquals;
+import servidor.compilador.expresion.valor.nativas.NLength;
+import servidor.compilador.expresion.valor.nativas.NMalloc;
+import servidor.compilador.expresion.valor.nativas.NReplace;
+import servidor.compilador.expresion.valor.nativas.NRound;
+import servidor.compilador.expresion.valor.nativas.NSizeof;
+import servidor.compilador.expresion.valor.nativas.NTochararray;
+import servidor.compilador.expresion.valor.nativas.NTolowercase;
+import servidor.compilador.expresion.valor.nativas.NTouppercase;
+import servidor.compilador.expresion.valor.nativas.NTrunk;
+import servidor.compilador.instruccion.Asignacion;
+import servidor.compilador.instruccion.BloqueInstrucciones;
+import servidor.compilador.instruccion.Break;
+import servidor.compilador.instruccion.Case;
+import servidor.compilador.instruccion.Continue;
+import servidor.compilador.instruccion.Exit;
+import servidor.compilador.instruccion.For;
+import servidor.compilador.instruccion.If;
+import servidor.compilador.instruccion.Instruccion;
+import servidor.compilador.instruccion.InstruccionExpresion;
+import servidor.compilador.instruccion.NFree;
+import servidor.compilador.instruccion.Read;
+import servidor.compilador.instruccion.Repeat;
+import servidor.compilador.instruccion.Sif;
+import servidor.compilador.instruccion.Switch;
+import servidor.compilador.instruccion.While;
+import servidor.compilador.instruccion.With;
+import servidor.compilador.instruccion.Write;
+import servidor.compilador.instruccion.WriteSimple;
+import servidor.compilador.instruccion.Writeln;
+import servidor.compilador.instruccion.tipo.PreCampo;
+import servidor.compilador.instruccion.tipo.PreDimension;
+import servidor.compilador.instruccion.tipo.PreDimension1;
+import servidor.compilador.instruccion.tipo.PreDimension2;
+import servidor.compilador.instruccion.tipo.PreArreglo;
+import servidor.compilador.instruccion.tipo.PreEnumeracion;
+import servidor.compilador.instruccion.tipo.PreTipo;
+import servidor.compilador.instruccion.tipo.PrePrimitivo;
+import servidor.compilador.instruccion.tipo.PreRango;
+import servidor.compilador.instruccion.tipo.PreRecord;
+import servidor.compilador.instruccion.tipo.PreTipoId;
+import servidor.compilador.preanalisis.DeclaracionConstantes;
+import servidor.compilador.preanalisis.DeclaracionConstantes1;
+import servidor.compilador.preanalisis.DeclaracionConstantes2;
+import servidor.compilador.preanalisis.DeclaracionTipo;
+import servidor.compilador.preanalisis.DeclaracionTipo1;
+import servidor.compilador.preanalisis.DeclaracionVariables;
+import servidor.compilador.preanalisis.DeclaracionVariables1;
+import servidor.compilador.preanalisis.DeclaracionVariables2;
+import servidor.compilador.preanalisis.Id;
+import servidor.compilador.preanalisis.PreFunction;
+import servidor.compilador.preanalisis.PreParametro;
+import servidor.compilador.preanalisis.PreProcedure;
+import servidor.compilador.preanalisis.PreProgram;
+import servidor.compilador.preanalisis.PreSubrutina;
+
+parser code {:
+    public String archivo;
+	public ArrayList<PreProgram> preprogramas = null;
+    public Ubicacion u(int l, int r) {
+    	return new Ubicacion(l + 1, r + 1, archivo);
+    }
+    public Parser(java_cup.runtime.Scanner s, String archivo) {
+        super(s);
+        this.archivo = archivo;
+    }
+    @Override
+	public void syntax_error(Symbol cur_token) {
+        if (cur_token.value != null) {
+            int fi = cur_token.right + 1;
+            int ci = cur_token.left + 1;
+            int ff = cur_token.right + 1;
+            int cf = cur_token.left + cur_token.value.toString().length() + 1;
+            Control.error(Constantes.SINTACTICO, new Ubicacion(fi, ci, archivo), "No se esperaba: " + cur_token.value);
+        }
+    }
+
+    @Override
+    public void unrecovered_syntax_error(Symbol cur_token) {
+		if (cur_token.value != null) {
+            int fi = cur_token.right + 1;
+            int ci = cur_token.left + 1;
+            int ff = cur_token.right + 1;
+            int cf = cur_token.left + cur_token.value.toString().length() + 1;
+            Control.error(Constantes.SINTACTICO, new Ubicacion(fi, ci, archivo), "No se esperaba: " + cur_token.value);
+        }
+	}
+:}
+
+action code {:
+
+:}
+
+terminal String tElseif, tInteger, tReal, tChar, tBoolean, tWord, tString, tNil, tType, tVar, tConst, tArray, tOf, tBegin, tEnd, tFor, tTo, tDo, tProgram, tWrite, tWriteln, tRecord, tWith, tMalloc, tSizeof, tFree, tTrue, tFalse, tAnd, tNot, tOr, tRepeat, tUntil, tDownto, tFunction, tCase, tDefault, tElse, tProcedure, tThen, tWhile, tIf, tUses, tNand, tNor, tCharat, tLength, tReplace, tTochararray, tTolowercase, tTouppercase, tEquals, tTrunk, tRound, tBreak, tContinue, tExit, tRead, tAsignacion, tIgual, tIpar, tDpar, tIcor, tDcor, tTresp, tDosp, tComa, tPunto, tPuntocoma, tDospuntos, tSuma, tResta, tMultiplicacion, tDivision, tPotencia, tModulo, tDistinto, tMayorigual, tMenorigual, tMayor, tMenor, nDecimal, nEntero, nIdentificador, tToken, nCadena;
+terminal Character nCaracter;
+
+non terminal ArrayList<PreProgram> INICIO;
+non terminal ArrayList<PreProgram> PROGRAMAS;
+non terminal PreProgram PROGRAMA;
+non terminal ArrayList<Id> USES;
+non terminal ArrayList<DeclaracionConstantes> CONST;
+non terminal ArrayList<DeclaracionConstantes> CONSTANTES;
+non terminal DeclaracionConstantes CONSTANTE;
+non terminal ArrayList<DeclaracionTipo> TYPE;
+non terminal ArrayList<DeclaracionTipo> TIPOS;
+non terminal DeclaracionTipo TIPO;
+non terminal ArrayList<DeclaracionVariables> VAR;
+non terminal ArrayList<DeclaracionVariables> VARIABLES;
+non terminal DeclaracionVariables VARIABLE;
+non terminal ArrayList<PreSubrutina> PROCEDIMIENTOS;
+non terminal ArrayList<PreSubrutina> PROCEDURES;
+non terminal PreSubrutina PROCEDURE;
+non terminal ArrayList<PreParametro> BLOQUE_PARAMETROS;
+non terminal ArrayList<PreParametro> PARAMETROS;
+non terminal PreParametro PARAMETRO;
+non terminal BloqueInstrucciones BLOQUE_INSTRUCCIONES;
+non terminal ArrayList<Instruccion> INSTRUCCIONES;
+non terminal Instruccion INSTRUCCION;
+non terminal Asignacion ASIGNACION;
+non terminal With WITH;
+non terminal Break BREAK;
+non terminal Continue CONTINUE;
+non terminal Exit EXIT;
+non terminal If IF;
+non terminal ArrayList<Sif> ELSEIFS;
+non terminal Switch SWITCH;
+non terminal ArrayList<Case> CASOS;
+non terminal Case CASO;
+non terminal ArrayList<Instruccion> DEFAULT;
+non terminal While WHILE;
+non terminal Repeat REPEAT;
+non terminal For FOR;
+non terminal Write WRITE;
+non terminal Writeln WRITELN;
+non terminal Read READ;
+non terminal ArrayList<Expresion> EXPS;
+non terminal Expresion EXP;
+non terminal Expresion VAL;
+non terminal Elemento LLAMADA;
+non terminal Expresion NATIVA;
+non terminal ArrayList<Expresion> BLOQUE_ARGUMENTOS;
+non terminal Acceso ACCESO;
+non terminal PreTipo TIPO_DEF;
+non terminal Atomo VALOR_RANGO;
+non terminal PreTipo TIPO_SIMPLE;
+non terminal PreArreglo ARRAY;
+non terminal PrePrimitivo PRIMITIVO;
+non terminal ArrayList<PreDimension> DIMENSIONES;
+non terminal PreDimension DIMENSION;
+non terminal ArrayList<PreCampo> CAMPOS;
+non terminal PreCampo CAMPO;
+non terminal ArrayList<Id> IDS;
+non terminal Atomo ATOMO;
+non terminal Id ID;
+
+precedence nonassoc tElse;
+precedence nonassoc tElseif;
+precedence left tOr;
+precedence left tNor, tNand;
+precedence left tAnd;
+precedence right tNot;
+precedence nonassoc tIgual, tDistinto, tMenor, tMayor, tMenorigual, tMayorigual;
+precedence left tSuma, tResta;
+precedence left tMultiplicacion, tDivision, tModulo;
+precedence right tPotencia;
+precedence left tPunto;
+precedence left tIpar, tDpar;
+precedence left tTresp;
+precedence left tDospuntos, tComa;
+
+//Gramatica
+
+start with INICIO;
+
+INICIO ::= PROGRAMAS:a tToken
+        {:
+            RESULT = a;
+            parser.preprogramas = a;
+        :};
+
+PROGRAMAS ::= PROGRAMAS:a PROGRAMA:b
+            {:
+                a.add(b);
+                RESULT = a;
+            :}
+            | PROGRAMA:a
+            {:
+                ArrayList<PreProgram> pp = new ArrayList<>();
+                pp.add(a);
+                RESULT = pp;
+            :};
+
+PROGRAMA ::= tProgram ID:a tPuntocoma USES:b TYPE:c CONST:d VAR:e PROCEDIMIENTOS:f BLOQUE_INSTRUCCIONES:g tPunto
+            {:
+                RESULT = new PreProgram(a, b, c, d, e, f, g.instrucciones);
+            :};
+
+USES ::= tUses IDS:a tPuntocoma
+        {:
+            RESULT = a;
+        :}
+        | tUses error tPuntocoma
+        |
+        {:
+            RESULT = new ArrayList<>();
+        :};
+
+CONST ::= tConst CONSTANTES:a
+        {:
+            RESULT = a;
+        :}
+        | tConst error tPuntocoma
+        |
+        {:
+            RESULT = new ArrayList<>();
+        :};
+
+CONSTANTES ::= CONSTANTES:a CONSTANTE:b
+                {:
+                    a.add(b);
+                    RESULT = a;
+                :}
+                | CONSTANTE:a
+                {:
+                    ArrayList<DeclaracionConstantes> dc = new ArrayList<>();
+                    dc.add(a);
+                    RESULT = dc;
+                :};
+
+CONSTANTE ::= IDS:a tDospuntos TIPO_DEF:b tIgual EXP:c tPuntocoma
+            {:
+                RESULT = new DeclaracionConstantes1(a, b, c);
+            :}
+            | IDS:a tIgual TIPO_DEF:b tPuntocoma
+            {:
+                RESULT = new DeclaracionConstantes2(a, b);
+            :};
+
+TYPE ::= tType TIPOS:a
+        {:
+            RESULT = a;
+        :}
+        | tType error tPuntocoma
+        |
+        {:
+            RESULT = new ArrayList<>();
+        :};
+
+TIPOS ::= TIPOS:a TIPO:b
+        {:
+            a.add(b);
+            RESULT = a;
+        :}
+        | TIPO:a
+        {:
+            ArrayList<DeclaracionTipo> dt = new ArrayList<>();
+            dt.add(a);
+            RESULT = dt;
+        :};
+
+TIPO ::= IDS:a tIgual TIPO_DEF:b tPuntocoma
+        {:
+            b.declaracion = true;
+            RESULT = new DeclaracionTipo1(a, b);
+        :}
+        | IDS:a tDospuntos TIPO_DEF:b tPuntocoma
+        {:
+            b.declaracion = true;
+            RESULT = new DeclaracionTipo1(a, b);
+        :};
+
+VAR ::= tVar VARIABLES:a
+        {:
+            RESULT = a;
+        :}
+        |tVar error tPuntocoma
+        |
+        {:
+            RESULT = new ArrayList<>();
+        :};
+
+VARIABLES ::= VARIABLES:a VARIABLE:b
+            {:
+                a.add(b);
+                RESULT = a;
+            :}
+            | VARIABLE:a
+            {:
+                ArrayList<DeclaracionVariables> dv = new ArrayList<>();
+                dv.add(a);
+                RESULT = dv;
+            :};
+
+VARIABLE ::= IDS:a tDospuntos TIPO_DEF:b tPuntocoma
+            {:
+                RESULT = new DeclaracionVariables1(a, b);
+            :}
+            | IDS:a tDospuntos TIPO_DEF:b tIgual EXP:c tPuntocoma
+            {:
+                RESULT = new DeclaracionVariables2(a, b, c);
+            :};
+
+PROCEDIMIENTOS ::= PROCEDURES:a
+                    {:
+                        RESULT = a;
+                    :}
+                    |
+                    {:
+                        RESULT = new ArrayList<>();
+                    :};
+
+PROCEDURES ::= PROCEDURES:a PROCEDURE:b
+                {:
+                    if(b != null) {
+                        a.add(b);
+                    }
+                    RESULT = a;
+                :}
+                | PROCEDURE:a
+                {:
+                    ArrayList<PreSubrutina> ps = new ArrayList<>();
+                    if(a != null) {
+                        ps.add(a);
+                    }
+                    RESULT = ps;
+                :};
+
+PROCEDURE ::= tProcedure ID:a BLOQUE_PARAMETROS:b tPuntocoma TYPE:c CONST:d VAR:e PROCEDIMIENTOS:f BLOQUE_INSTRUCCIONES:g tPuntocoma
+            {:
+                RESULT = new PreProcedure(a, b, c, d, e, f, g.instrucciones);
+            :}
+            | tFunction ID:a BLOQUE_PARAMETROS:b tDospuntos TIPO_DEF:c tPuntocoma TYPE:d CONST:e VAR:f PROCEDIMIENTOS:g BLOQUE_INSTRUCCIONES:h tPuntocoma
+            {:
+                RESULT = new PreFunction(a, b, c, d, e, f, g, h.instrucciones);
+            :}
+            | error tPuntocoma;
+
+BLOQUE_PARAMETROS ::= tIpar PARAMETROS:a tDpar
+                    {:
+                        RESULT = a;
+                    :}
+                    | tIpar tDpar
+                    {:
+                        RESULT = new ArrayList<>();
+                    :}
+                    |
+                    {:
+                        RESULT = new ArrayList<>();
+                    :};
+
+PARAMETROS ::= PARAMETROS:a tPuntocoma PARAMETRO:b
+                {:
+                    a.add(b);
+                    RESULT = a;
+                :}
+                | PARAMETRO:a
+                {:
+                    ArrayList<PreParametro> pp = new ArrayList<>();
+                    pp.add(a);
+                    RESULT = pp;
+                :};
+
+PARAMETRO ::= IDS:a tDospuntos TIPO_DEF:b
+            {:
+                RESULT = new PreParametro(false, a, b);
+            :}
+            | tVar IDS:a tDospuntos TIPO_DEF:b
+            {:
+                RESULT = new PreParametro(true, a, b);
+            :};
+
+BLOQUE_INSTRUCCIONES ::= tBegin INSTRUCCIONES:a tEnd
+                        {:
+                            RESULT = new BloqueInstrucciones(a);
+                        :};
+
+INSTRUCCIONES ::= INSTRUCCIONES:a INSTRUCCION:b
+                {:
+                    if(b != null) {
+                        a.add(b);
+                    }
+                    RESULT = a;
+                :}
+                | INSTRUCCION:a
+                {:
+                    ArrayList<Instruccion> ins = new ArrayList<>();
+                    if(a != null) {
+                        ins.add(a);
+                    }
+                    RESULT = ins;
+                :};
+
+INSTRUCCION ::= BLOQUE_INSTRUCCIONES:a
+                {:
+                    RESULT = a;
+                :}
+                | BLOQUE_INSTRUCCIONES:a tPuntocoma
+                {:
+                    RESULT = a;
+                :}
+                | ASIGNACION:a
+                {:
+                    RESULT = a;
+                :}
+                | WITH:a
+                {:
+                    RESULT = a;
+                :}
+                | BREAK:a
+                {:
+                    RESULT = a;
+                :}
+                | CONTINUE:a
+                {:
+                    RESULT = a;
+                :}
+                | EXIT:a
+                {:
+                    RESULT = a;
+                :}
+                | IF:a
+                {:
+                    RESULT = a;
+                :}
+                | SWITCH:a
+                {:
+                    RESULT = a;
+                :}
+                | WHILE:a
+                {:
+                    RESULT = a;
+                :}
+                | REPEAT:a
+                {:
+                    RESULT = a;
+                :}
+                | FOR:a
+                {:
+                    RESULT = a;
+                :}
+                | WRITE:a
+                {:
+                    RESULT = a;
+                :}
+                | WRITELN:a
+                {:
+                    RESULT = a;
+                :}
+                | READ:a
+                {:
+                    RESULT = a;
+                :}
+                | LLAMADA:a tPuntocoma
+                {:
+                    RESULT = new InstruccionExpresion(a);
+                :}
+                | tFree:a tIpar ACCESO:b tDpar tPuntocoma
+                {:
+                    RESULT = new NFree(b);
+                :}
+                | error tPuntocoma;
+
+ASIGNACION ::= ACCESO:a tAsignacion EXP:b tPuntocoma
+            {:
+                RESULT = new Asignacion(a, b);
+            :};
+
+WITH ::= tWith ACCESO:a tDo INSTRUCCIONES:b tEnd tPuntocoma
+        {:
+            RESULT = new With(a, b);
+        :};
+
+BREAK ::= tBreak:a tPuntocoma
+        {:
+            RESULT = new Break(parser.u(aright, aleft));
+        :};
+
+CONTINUE ::= tContinue:a tPuntocoma
+        {:
+            RESULT = new Continue(parser.u(aright, aleft));
+        :};
+
+EXIT ::= tExit:a tPuntocoma
+        {:
+            RESULT = new Exit(parser.u(aright, aleft));
+        :};
+
+IF ::= tIf EXP:a tThen INSTRUCCION:b
+        {:
+            ArrayList<Instruccion> ins;
+            if(b instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(b);
+            }
+            RESULT = new If(new Sif(a, ins), new ArrayList<>(), new ArrayList<>());
+        :}
+        | tIf EXP:a tThen INSTRUCCION:b ELSEIFS:c
+        {:
+            ArrayList<Instruccion> ins;
+            if(b instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(b);
+            }
+            RESULT = new If(new Sif(a, ins), c, new ArrayList<>());
+        :}
+        | tIf EXP:a tThen INSTRUCCION:b ELSEIFS:c tElse INSTRUCCION:d
+        {:
+            ArrayList<Instruccion> ins1;
+            if(b instanceof BloqueInstrucciones) {
+                ins1 = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins1 = new ArrayList<>();
+                ins1.add(b);
+            }
+            ArrayList<Instruccion> ins2;
+            if(d instanceof BloqueInstrucciones) {
+                ins2 = ((BloqueInstrucciones)d).instrucciones;
+            } else {
+                ins2 = new ArrayList<>();
+                ins2.add(d);
+            }
+            RESULT = new If(new Sif(a, ins1), c, ins2);
+        :}
+        | tIf EXP:a tThen INSTRUCCION:b tElse INSTRUCCION:c
+        {:
+            ArrayList<Instruccion> ins1;
+            if(b instanceof BloqueInstrucciones) {
+                ins1 = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins1 = new ArrayList<>();
+                ins1.add(b);
+            }
+            ArrayList<Instruccion> ins2;
+            if(c instanceof BloqueInstrucciones) {
+                ins2 = ((BloqueInstrucciones)c).instrucciones;
+            } else {
+                ins2 = new ArrayList<>();
+                ins2.add(c);
+            }
+            RESULT = new If(new Sif(a, ins1), new ArrayList<>(), ins2);
+        :};
+
+ELSEIFS ::= ELSEIFS:a tElseif EXP:b tThen INSTRUCCION:c
+            {:
+                ArrayList<Instruccion> ins;
+                if(c instanceof BloqueInstrucciones) {
+                    ins = ((BloqueInstrucciones)c).instrucciones;
+                } else {
+                    ins = new ArrayList<>();
+                    ins.add(c);
+                }
+                a.add(new Sif(b, ins));
+                RESULT = a;
+            :}
+            | tElseif EXP:a tThen INSTRUCCION:b
+            {:
+                ArrayList<Instruccion> ins;
+                if(b instanceof BloqueInstrucciones) {
+                    ins = ((BloqueInstrucciones)b).instrucciones;
+                } else {
+                    ins = new ArrayList<>();
+                    ins.add(b);
+                }
+                ArrayList<Sif> sifs = new ArrayList<>();
+                sifs.add(new Sif(a, ins));
+                RESULT = sifs;
+            :};
+
+SWITCH ::= tCase EXP:a tOf CASOS:b tEnd tPuntocoma
+            {:
+                RESULT = new Switch(a, b, new ArrayList<>());
+            :}
+            | tCase EXP:a tOf CASOS:b DEFAULT:c tEnd tPuntocoma
+            {:
+                RESULT = new Switch(a, b, c);
+            :};
+
+CASOS ::= CASOS:a CASO:b
+        {:
+            a.add(b);
+            RESULT = a;
+        :}
+        | CASO:a
+        {:
+            ArrayList<Case> casos = new ArrayList<>();
+            casos.add(a);
+            RESULT = casos;
+        :};
+
+CASO ::= EXPS:a tDospuntos INSTRUCCION:b
+        {:
+            ArrayList<Instruccion> ins;
+            if(b instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(b);
+            }
+            RESULT = new Case(a, ins);
+        :};
+
+DEFAULT ::= tDefault tDospuntos INSTRUCCION:a
+            {:
+                ArrayList<Instruccion> ins;
+                if(a instanceof BloqueInstrucciones) {
+                    ins = ((BloqueInstrucciones)a).instrucciones;
+                } else {
+                    ins = new ArrayList<>();
+                    ins.add(a);
+                }
+                RESULT = ins;
+            :};
+
+WHILE ::= tWhile EXP:a tDo INSTRUCCION:b
+        {:
+            ArrayList<Instruccion> ins;
+            if(b instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)b).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(b);
+            }
+            RESULT = new While(a, ins);
+        :};
+
+REPEAT ::= tRepeat INSTRUCCIONES:a tUntil EXP:b tPuntocoma
+            {:
+                RESULT = new Repeat(a, b);
+            :};
+
+FOR ::= tFor ID:a tAsignacion EXP:b tTo EXP:c tDo INSTRUCCION:d
+        {:
+            ArrayList<Instruccion> ins;
+            if(d instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)d).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(d);
+            }
+            RESULT = new For(a, b, c, true, ins);
+        :}
+        | tFor ID:a tAsignacion EXP:b tDownto EXP:c tDo INSTRUCCION:d
+        {:
+            ArrayList<Instruccion> ins;
+            if(d instanceof BloqueInstrucciones) {
+                ins = ((BloqueInstrucciones)d).instrucciones;
+            } else {
+                ins = new ArrayList<>();
+                ins.add(d);
+            }
+            RESULT = new For(a, b, c, false, ins);
+        :};
+
+WRITE ::= tWrite BLOQUE_ARGUMENTOS:a tPuntocoma
+        {:
+            RESULT = new WriteSimple(a);
+        :};
+
+WRITELN ::= tWriteln BLOQUE_ARGUMENTOS:a tPuntocoma
+        {:
+            RESULT = new Writeln(a);
+        :};
+
+READ ::= tRead tIpar ID:a tDpar tPuntocoma
+        {:
+            RESULT = new Read(a);
+        :};
+
+EXPS ::= EXPS:a tComa EXP:b
+        {:
+            a.add(b);
+            RESULT = a;
+        :}
+        | EXP:a
+        {:
+            ArrayList<Expresion> exps = new ArrayList<>();
+            exps.add(a);
+            RESULT = exps;
+        :};
+
+EXP ::= EXP:a tOr EXP:b
+        {:
+            RESULT = new Or(a, b);
+        :}
+        | EXP:a tNand EXP:b
+        {:
+            RESULT = new Nand(a, b);
+        :}
+        | EXP:a tNor EXP:b
+        {:
+            RESULT = new Nor(a, b);
+        :}
+        | EXP:a tAnd EXP:b
+        {:
+            RESULT = new And(a, b);
+        :}
+        | tNot EXP:a
+        {:
+            RESULT = new Not(a);
+        :}
+        | EXP:a tIgual EXP:b
+        {:
+            RESULT = new Igual(a, b);
+        :}
+        | EXP:a tDistinto EXP:b
+        {:
+            RESULT = new Distinto(a, b);
+        :}
+        | EXP:a tMayor EXP:b
+        {:
+            RESULT = new RelacionalSimple(a, b, "jg");
+        :}
+        | EXP:a tMenor EXP:b
+        {:
+            RESULT = new RelacionalSimple(a, b, "jl");
+        :}
+        | EXP:a tMayorigual EXP:b
+        {:
+            RESULT = new RelacionalSimple(a, b, "jge");
+        :}
+        | EXP:a tMenorigual EXP:b
+        {:
+            RESULT = new RelacionalSimple(a, b, "jle");
+        :}
+        | EXP:a tSuma EXP:b
+        {:
+            RESULT = new Suma(a, b);
+        :}
+        | EXP:a tResta EXP:b
+        {:
+            RESULT = new Resta(a, b);
+        :}
+        | EXP:a tMultiplicacion EXP:b
+        {:
+            RESULT = new Multiplicacion(a, b);
+        :}
+        | EXP:a tDivision EXP:b
+        {:
+            RESULT = new Division(a, b);
+        :}
+        | EXP:a tModulo EXP:b
+        {:
+            RESULT = new Modulo(a, b);
+        :}
+        | EXP:a tPotencia EXP:b
+        {:
+            RESULT = new Potencia(a, b);
+        :}
+        | tSuma EXP:a
+        {:
+            RESULT = a;
+        :}
+        | tResta EXP:a
+        {:
+            RESULT = new Restau(a);
+        :}
+        | tIpar EXP:a tDpar
+        {:
+            RESULT = a;
+        :}
+        | VAL:a
+        {:
+            RESULT = a;
+        :};
+
+VAL ::= ATOMO:a
+        {:
+            RESULT = a;
+        :}
+        | ACCESO:a
+        {:
+            RESULT = a;
+        :}
+        | NATIVA:a
+        {:
+            RESULT = a;
+        :};
+
+NATIVA ::= tSizeof:a tIpar ID:b tDpar
+        {:
+            RESULT = new NSizeof(parser.u(aright, aleft), b);
+        :}
+        | tMalloc:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NMalloc(parser.u(aright, aleft), b);
+        :}
+        | tCharat:a tIpar EXP:b tComa EXP:c tDpar
+        {:
+            RESULT = new NCharat(parser.u(aright, aleft), b, c);
+        :}
+        | tLength:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NLength(parser.u(aright, aleft), b);
+        :}
+        | tReplace:a tIpar EXP:b tComa EXP:c tDpar
+        {:
+            RESULT = new NReplace(parser.u(aright, aleft), b, c);
+        :}
+        | tTochararray:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NTochararray(parser.u(aright, aleft), b);
+        :}
+        | tTolowercase:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NTolowercase(parser.u(aright, aleft), b);
+        :}
+        | tTouppercase:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NTouppercase(parser.u(aright, aleft), b);
+        :}
+        | tEquals:a tIpar EXP:b tComa EXP:c tDpar
+        {:
+            RESULT = new NEquals(parser.u(aright, aleft), b, c);
+        :}
+        | tTrunk:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NTrunk(parser.u(aright, aleft), b);
+        :}
+        | tRound:a tIpar EXP:b tDpar
+        {:
+            RESULT = new NRound(parser.u(aright, aleft), b);
+        :};
+
+BLOQUE_ARGUMENTOS ::= tIpar EXPS:a tDpar
+                    {:
+                        RESULT = a;
+                    :}
+                    | tIpar tDpar
+                    {:
+                        RESULT = new ArrayList<>();
+                    :};
+
+ACCESO ::= ID:a
+            {:
+                RESULT = new Acceso(new Identificador(a));
+            :}
+            | ID:a tIcor EXPS:b tDcor
+            {:
+                RESULT = new Acceso(new AccesoArreglo(a, b));
+            :}
+            | LLAMADA:a
+            {:
+                RESULT = new Acceso(a);
+            :}
+            | LLAMADA:a tIcor EXPS:b tDcor
+            {:
+                //RESULT = new Acceso(a);
+            :}
+            | ACCESO:a tPunto ID:b
+            {:
+                a.elementos.add(new Identificador(b));
+                RESULT = a;
+            :}
+            | ACCESO:a tPunto ID:b tIcor EXPS:c tDcor
+            {:
+                a.elementos.add(new AccesoArreglo(b, c));
+                RESULT = a;
+            :};
+
+LLAMADA ::= ID:a BLOQUE_ARGUMENTOS:b
+            {:
+                RESULT = new Llamada(a, b);
+            :};
+
+TIPO_DEF ::= TIPO_SIMPLE:a
+            {:
+                RESULT = a;
+            :}
+            | tIpar:a IDS:b tDpar
+            {:
+                RESULT = new PreEnumeracion(parser.u(aright, aleft), b);
+            :}
+            | tRecord:a CAMPOS:b tEnd
+            {:
+                RESULT = new PreRecord(parser.u(aright, aleft), b);
+            :}
+            | ARRAY:a
+            {:
+                RESULT = a;
+            :}
+            | VALOR_RANGO:a tTresp VALOR_RANGO:b
+            {:
+                RESULT = new PreRango(a, b);
+            :};
+
+VALOR_RANGO ::= nEntero:a
+            {:
+                RESULT = new Atomo(a, Constantes.INTEGER, parser.u(aright, aleft));
+            :}
+            | tResta nEntero:a
+            {:
+                RESULT = new Atomo("-"+a, Constantes.INTEGER, parser.u(aright, aleft));
+            :}
+            | nDecimal:a
+            {:
+                RESULT = new Atomo(a, Constantes.REAL, parser.u(aright, aleft));
+            :}
+            | tResta nDecimal:a
+            {:
+                RESULT = new Atomo("-"+a, Constantes.REAL, parser.u(aright, aleft));
+            :}
+            | nCaracter:a
+            {:
+                RESULT = new Atomo(a + "", Constantes.CHAR, parser.u(aright, aleft));
+            :};
+
+TIPO_SIMPLE ::= ID:a
+                {:
+                    RESULT = new PreTipoId(a);
+                :}
+                | PRIMITIVO:a
+                {:
+                    RESULT = a;
+                :};
+
+ARRAY ::= tArray:a tIcor DIMENSIONES:b tDcor tOf ARRAY:c
+        {:
+            c.ubicacion = parser.u(aright, aleft);
+            b.addAll(c.predimensiones);
+            c.predimensiones = b;
+            RESULT = c;
+        :}
+        | tArray:a tIcor DIMENSIONES:b tDcor tOf TIPO_SIMPLE:c
+        {:
+            RESULT = new PreArreglo(parser.u(aright, aleft), b, c);
+        :};
+
+PRIMITIVO ::= tInteger:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.INTEGER);
+            :}
+            | tReal:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.REAL);
+            :}
+            | tChar:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.CHAR);
+            :}
+            | tWord:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.WORD);
+            :}
+            | tString:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.STRING);
+            :}
+            | tBoolean:a
+            {:
+                RESULT = new PrePrimitivo(parser.u(aright, aleft), Constantes.BOOLEAN);
+            :};
+
+DIMENSIONES ::= DIMENSIONES:a tComa DIMENSION:b
+                {:
+                    a.add(b);
+                    RESULT = a;
+                :}
+                | DIMENSION:a
+                {:
+                    ArrayList<PreDimension> dims = new ArrayList<>();
+                    dims.add(a);
+                    RESULT = dims;
+                :};
+
+DIMENSION ::= EXP:a tDosp EXP:b
+            {:
+                RESULT = new PreDimension1(a, b);
+            :}
+            | EXP:a
+            {:
+                RESULT = new PreDimension2(a);
+            :};
+
+CAMPOS ::= CAMPOS:a CAMPO:b
+            {:
+                a.add(b);
+                RESULT = a;
+            :}
+            | CAMPO:a
+            {:
+                ArrayList<PreCampo> ca = new ArrayList<>();
+                ca.add(a);
+                RESULT = ca;
+            :};
+
+CAMPO ::= IDS:a tDospuntos TIPO_DEF:b tPuntocoma
+        {:
+            RESULT = new PreCampo(a, b);  
+        :};
+
+IDS ::= IDS:a tComa ID:b
+        {:
+            a.add(b);
+            RESULT = a;
+        :}
+        | ID:a
+        {:
+            ArrayList<Id> ids = new ArrayList<>();
+            ids.add(a);
+            RESULT = ids;
+        :};
+
+ATOMO ::= nEntero:a
+        {:
+            RESULT = new Atomo(a, Constantes.INTEGER, parser.u(aright, aleft));
+        :}
+        | nDecimal:a
+        {:
+            RESULT = new Atomo(a, Constantes.REAL, parser.u(aright, aleft));
+        :}
+        | nCaracter:a
+        {:
+            RESULT = new Atomo(a + "", Constantes.CHAR, parser.u(aright, aleft));
+        :}
+        | nCadena:a
+        {:
+            RESULT = new Atomo(a, Constantes.STRING, parser.u(aright, aleft));
+        :}
+        | tTrue:a
+        {:
+            RESULT = new Atomo(Constantes.TRUE, Constantes.BOOLEAN, parser.u(aright, aleft));
+        :}
+        | tFalse:a
+        {:
+            RESULT = new Atomo(Constantes.FALSE, Constantes.BOOLEAN, parser.u(aright, aleft));
+        :}
+        | tNil:a
+        {:
+            RESULT = new Atomo(a, Constantes.NIL, parser.u(aright, aleft));
+        :};
+
+ID ::= nIdentificador:a
+        {:
+            RESULT = new Id(a.toLowerCase(), parser.u(aright, aleft));
+        :};

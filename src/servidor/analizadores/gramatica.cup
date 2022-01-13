@@ -1,0 +1,265 @@
+package servidor.analizadores;
+
+import java_cup.runtime.Scanner;
+import java.util.ArrayList;
+import java_cup.runtime.Symbol;
+import servidor.compilador.Ubicacion;
+
+parser code {:
+	//public Archivo file = null;
+	public String archivo;
+	public Parser(Scanner sc, String archivo) {
+        super(sc);
+        this.archivo = archivo;
+    }
+    public Ubicacion u(int l, int r, int s) {
+    	return new Ubicacion(l + 1, r + 1, archivo);
+    }
+	public void syntax_error(Symbol cur_token) {
+		int fi = cur_token.right + 1;
+        int ci = cur_token.left + 1;
+        int ff = cur_token.right + 1;
+        int cf = cur_token.left + cur_token.value.toString().length() + 1;
+        System.out.println(cur_token.value + " -> (" + fi + "," + ci + "),(" + ff + "," + cf + ")");
+        //Principal.error(Constantes.SINTACTICO, "No se esperaba: " + cur_token.value, new Ubicacion(fi,ci,ff,cf,ruta,archivo));
+	}
+	public void unrecovered_syntax_error(Symbol cur_token) {
+		int fi = cur_token.right + 1;
+        int ci = cur_token.left + 1;
+        int ff = cur_token.right + 1;
+        int cf = cur_token.left + cur_token.value.toString().length() + 1;
+        System.out.println(cur_token.value + " -> (" + fi + "," + ci + "),(" + ff + "," + cf + ")");
+        //Principal.error(Constantes.SINTACTICO, "No se esperaba: " + cur_token.value, new Ubicacion(fi,ci,ff,cf,ruta,archivo));
+	}
+:}
+
+action code {:
+
+:}
+
+terminal String tElseif, tInteger, tReal, tChar, tBoolean, tWord, tString, tNil, tType, tVar, tConst, tArray, tOf, tBegin, tEnd, tFor, tTo, tDo, tProgram, tWrite, tWriteln, tRecord, tWith, tMalloc, tSizeof, tFree, tTrue, tFalse, tAnd, tNot, tOr, tRepeat, tUntil, tDownto, tFunction, tCase, tDefault, tElse, tProcedure, tThen, tWhile, tIf, tUses, tNand, tNor, tCharat, tLength, tReplace, tTochararray, tTolowercase, tTouppercase, tEquals, tTrunk, tRound, tBreak, tContinue, tExit, tRead, tAsignacion, tIgual, tIpar, tDpar, tIcor, tDcor, tTresp, tDosp, tComa, tPunto, tPuntocoma, tDospuntos, tSuma, tResta, tMultiplicacion, tDivision, tPotencia, tModulo, tDistinto, tMayorigual, tMenorigual, tMayor, tMenor, nDecimal, nEntero, nIdentificador, tToken, nCadena;
+terminal Character nCaracter;
+
+non terminal INICIO, PROGRAMA, USES, CONST, CONSTANTES, CONSTANTE, TYPE, TIPOS, TIPO, VAR, VARIABLES, VARIABLE, PROCEDIMIENTOS, PROCEDURES, PROCEDURE, BLOQUE_PARAMETROS, PARAMETROS, PARAMETRO, BLOQUE_INSTRUCCIONES, INSTRUCCIONES, INSTRUCCION, ASIGNACION, WITH, BREAK, CONTINUE, EXIT, IF, ELSEIFS, SWITCH, CASOS, CASO, DEFAULT, WHILE, REPEAT, FOR, WRITE, WRITELN, READ, EXPS, EXP, VAL, LLAMADA, NATIVA, BLOQUE_ARGUMENTOS, ACCESO, TIPO_DEF, TIPO_SIMPLE, PRIMITIVO, DIMENSIONES, DIMENSION, CAMPOS, CAMPO, IDS, ATOMO, ID;
+
+precedence nonassoc tElse;
+precedence nonassoc tThen;
+precedence left tOr;
+precedence left tNor, tNand;
+precedence left tAnd;
+precedence right tNot;
+precedence nonassoc tIgual, tDistinto, tMenor, tMayor, tMenorigual, tMayorigual;
+precedence left tSuma, tResta;
+precedence left tMultiplicacion, tDivision, tModulo;
+precedence right tPotencia;
+precedence left tPunto;
+precedence left tIpar, tDpar;
+precedence left tDospuntos, tComa;
+
+//Gramatica
+
+start with INICIO;
+
+INICIO ::= PROGRAMA {: System.out.println("fin"); :}
+        | PROGRAMA tToken {: System.out.println("fin"); :};
+
+PROGRAMA ::= tProgram ID tPuntocoma USES TYPE CONST VAR PROCEDIMIENTOS BLOQUE_INSTRUCCIONES tPunto;
+
+USES ::= tUses IDS tPuntocoma
+        |;
+
+CONST ::= tConst CONSTANTES
+            |;
+
+CONSTANTES ::= CONSTANTE
+                | CONSTANTE CONSTANTES;
+
+CONSTANTE ::= IDS tIgual EXP tPuntocoma
+            | IDS tIgual EXP tTresp EXP tPuntocoma;
+
+TYPE ::= tType TIPOS
+        |;
+
+TIPOS ::= TIPO
+        | TIPO TIPOS;
+
+TIPO ::= IDS tIgual TIPO_DEF tPuntocoma;
+
+VAR ::= tVar VARIABLES
+        |; 
+
+VARIABLES ::= VARIABLE
+            | VARIABLE VARIABLES;
+
+VARIABLE ::= IDS tDospuntos TIPO_DEF tPuntocoma
+            | IDS tDospuntos TIPO_DEF tIgual EXP tPuntocoma;
+
+PROCEDIMIENTOS ::= PROCEDURES
+                    |;
+
+PROCEDURES ::= PROCEDURES PROCEDURE
+                | PROCEDURE;
+
+PROCEDURE ::= tProcedure ID BLOQUE_PARAMETROS tPuntocoma CONST VAR PROCEDIMIENTOS BLOQUE_INSTRUCCIONES tPuntocoma
+            | tFunction ID BLOQUE_PARAMETROS tDospuntos TIPO_DEF tPuntocoma CONST VAR PROCEDIMIENTOS BLOQUE_INSTRUCCIONES tPuntocoma;
+
+BLOQUE_PARAMETROS ::= tIpar PARAMETROS tDpar
+                    |; 
+
+PARAMETROS ::= PARAMETROS tPuntocoma PARAMETRO
+                | PARAMETRO;
+
+PARAMETRO ::= IDS tDospuntos TIPO_DEF
+            | tVar IDS tDospuntos TIPO_DEF;
+
+BLOQUE_INSTRUCCIONES ::= tBegin INSTRUCCIONES tEnd;
+
+INSTRUCCIONES ::= INSTRUCCIONES INSTRUCCION
+                | INSTRUCCION;
+
+INSTRUCCION ::= BLOQUE_INSTRUCCIONES
+                | ASIGNACION
+                | WITH
+                | BREAK
+                | CONTINUE
+                | EXIT
+                | IF
+                | SWITCH
+                | WHILE
+                | REPEAT
+                | FOR
+                | WRITE
+                | WRITELN
+                | READ;
+
+ASIGNACION ::= ACCESO tAsignacion EXP tPuntocoma;
+
+WITH ::= tWith ACCESO tDo INSTRUCCIONES tEnd tPuntocoma;
+
+BREAK ::= tBreak tPuntocoma;
+
+CONTINUE ::= tContinue tPuntocoma;
+
+EXIT ::= tExit tPuntocoma;
+
+IF ::= tIf EXP tThen INSTRUCCION
+        | tIf EXP tThen INSTRUCCION ELSEIFS
+        | tIf EXP tThen INSTRUCCION tElse INSTRUCCION
+        | tIf EXP tThen INSTRUCCION ELSEIFS tElse INSTRUCCION;
+
+ELSEIFS ::= ELSEIFS tElseif EXP tThen INSTRUCCION
+            | tElseif EXP tThen INSTRUCCION;
+
+SWITCH ::= tCase EXP tOf CASOS tEnd
+            | tCase EXP tOf CASOS DEFAULT tEnd ;
+
+CASOS ::= CASOS CASO
+        | CASO;
+
+CASO ::= EXPS tDospuntos INSTRUCCION;
+
+DEFAULT ::= tDefault tDospuntos INSTRUCCION;
+
+WHILE ::= tWhile EXP tDo INSTRUCCION;
+
+REPEAT ::= tRepeat INSTRUCCIONES tUntil EXP;
+
+FOR ::= tFor ID tAsignacion EXP tTo EXP tDo INSTRUCCION
+        | tFor ID tAsignacion EXP tDownto EXP tDo INSTRUCCION;
+
+WRITE ::= tWrite BLOQUE_ARGUMENTOS tPuntocoma;
+
+WRITELN ::= tWriteln BLOQUE_ARGUMENTOS tPuntocoma;
+
+READ ::= tRead BLOQUE_ARGUMENTOS tPuntocoma;
+
+EXPS ::= EXPS tComa EXP
+        | EXP;
+
+EXP ::= EXP tOr EXP
+        | EXP tNand EXP
+        | EXP tNor EXP
+        | EXP tAnd EXP
+        | tNot EXP
+        | EXP tIgual EXP
+        | EXP tDistinto EXP
+        | EXP tMayor EXP
+        | EXP tMenor EXP
+        | EXP tMayorigual EXP
+        | EXP tMenorigual EXP
+        | EXP tSuma EXP
+        | EXP tResta EXP
+        | EXP tMultiplicacion EXP
+        | EXP tDivision EXP
+        | EXP tModulo EXP
+        | EXP tPotencia EXP
+        | tSuma EXP
+        | tResta EXP
+        | tIpar EXP tDpar
+        | VAL;
+
+VAL ::= ATOMO
+        | ACCESO
+        | LLAMADA
+        | tNil;
+
+LLAMADA ::= ID BLOQUE_ARGUMENTOS
+            | NATIVA;
+
+NATIVA ::= tSizeof BLOQUE_ARGUMENTOS
+        | tMalloc BLOQUE_ARGUMENTOS
+        | tFree BLOQUE_ARGUMENTOS
+        | tCharat BLOQUE_ARGUMENTOS
+        | tLength BLOQUE_ARGUMENTOS
+        | tReplace BLOQUE_ARGUMENTOS
+        | tTochararray BLOQUE_ARGUMENTOS
+        | tTolowercase BLOQUE_ARGUMENTOS
+        | tTouppercase BLOQUE_ARGUMENTOS
+        | tEquals BLOQUE_ARGUMENTOS
+        | tTrunk BLOQUE_ARGUMENTOS
+        | tRound BLOQUE_ARGUMENTOS;
+
+BLOQUE_ARGUMENTOS ::= tIpar EXPS tDpar
+                    | tIpar tDpar; 
+
+ACCESO ::= ID
+            | ACCESO tPunto ID
+            | ACCESO tIcor EXPS tDcor;
+
+TIPO_DEF ::= TIPO_SIMPLE
+            | tIpar IDS tDpar
+            | tRecord CAMPOS tEnd;
+
+TIPO_SIMPLE ::= ID
+                | PRIMITIVO
+                | tArray tIcor DIMENSIONES tDcor tOf TIPO_SIMPLE;
+
+PRIMITIVO ::= tInteger
+            | tReal
+            | tChar
+            | tWord
+            | tString
+            | tBoolean;
+
+DIMENSIONES ::= DIMENSIONES tComa DIMENSION
+                | DIMENSION;
+
+DIMENSION ::= EXP tDosp EXP
+            | ID;
+
+CAMPOS ::= CAMPOS CAMPO
+            | CAMPO;
+
+CAMPO ::= IDS tDospuntos TIPO_DEF tPuntocoma;
+
+IDS ::= ID
+        | ID tComa IDS;
+
+ATOMO ::= nEntero
+        | nDecimal
+        | nCaracter
+        | nCadena
+        | tTrue
+        | tFalse;
+
+ID ::= nIdentificador;

@@ -1,0 +1,300 @@
+program minimos;
+
+type
+	Nodo : Record
+		siguiente : Nodo;
+        anterior : Nodo;
+		estudiante : Estudiante;
+	end;
+
+    Estudiante : Record		
+		carnet : integer;
+        nombre: string;
+	end;
+
+    seleccion = integer;
+    entero = integer;
+    SUMMER = (April, May, June, July, September);
+    COLORS = (Red, Green, Blue, Yellow, Magenta, Cyan, Black, White);
+    TRANSPORT = (Bus, Train, Airplane, Ship);
+    menor_edad = 0 ... 18;
+
+const 
+	piMod : integer= 3;	
+	verdadero:boolean= true;
+	falso:boolean= false;
+
+var
+	cabeza : Nodo;
+    cola : Nodo;
+
+procedure insert(carnet : integer; nombre :string);
+var	
+	nuevo : Nodo;
+    estudiante: Estudiante;
+begin
+    estudiante := malloc(Sizeof(Estudiante));
+    estudiante.nombre := nombre;
+    estudiante.carnet := carnet;
+	nuevo := malloc(Sizeof(Nodo));
+	nuevo.estudiante := estudiante;
+	if cabeza = NIL then
+		cabeza := nuevo;
+	else
+	  begin
+        cola.siguiente := nuevo;
+        nuevo.anterior := cola;        
+	  end;
+    cola := nuevo;
+end;
+
+procedure ingresoValores();
+begin
+    insert(2016, "Luis");
+    insert(2015, "Julio");
+    insert(2008, "Rainman");    
+    insert(2020, "Sale compi!");    
+    recorrerNormal();
+    recorrerInverso();        
+end;
+
+procedure recorrerNormal();
+var
+    temp : Nodo;
+begin
+    temp := cabeza;
+	while temp <> NIL do
+	begin
+		writeln(temp.estudiante.nombre);
+		temp := temp.siguiente;
+	end;
+end;
+
+procedure recorrerInverso();
+var
+	temp : Nodo;
+begin
+    temp := cola;
+	while temp <> NIL do
+	begin
+		writeln(temp.estudiante.nombre);
+		temp := temp.anterior;
+	end;
+end;
+
+
+procedure validacionExpresiones();
+var 
+    val1,val2,val3,val4,a,b : integer = 0;
+    transporte : TRANSPORT;
+    color : COLORS;
+    edad : menor_edad;
+begin
+    val1 := 2+2+5+8+9*5-9*5+50-30+2+5+8-6;
+    val2 := 2+5+5+9+65+2+2+4+45-10-5-8-6-8-5-9;
+    val3 := 1+5+4+8+52+3+6+5+8-1+-5+-5;
+    val4 := val1+val2+val3; {El resultado es 215}
+    
+    if val4 = 215 then
+    begin
+        writeln("Aritmeticas OK");
+    end;
+    if true = val1 < val2 then
+    begin
+        if true AND false OR NOT true AND false AND 2 < 4 and 4 > 5 then
+            begin
+                writeln("Rel y Log no OK");
+            end
+        else
+            begin
+                writeln("Rel y Log OK");
+            end
+    end;       
+    basicFunctions();
+    {Validacion de parametros}
+    a := 100;
+    b := 400;   
+    cambio(10, 20); {Deberia de reportar error, sino, 0 en paso por referencia}
+    cambio(a, b);
+    {Validacion de tipos definidos}
+    transporte := Bus;
+    color := Black;
+    edad := 50; {Se deberia de reportar un error, sino, 0 en tipos}
+    edad := 15;
+    if transporte = Airplane OR color = Black then
+    begin
+        transporte := Cayuco; {Se deberia de reportar un error, sino, 0 en tipos }
+        if transporte = bus AND edad < 19 then
+            begin
+                writeln("Se necesita permiso de sus padres");
+            end;
+        else
+            begin
+                writeln("Tipos incorrectos, 0");
+            end;
+    end;
+    {Validacion de constantes}
+    piMod := 16; {Se deberia de reportar error, sino, 0 en constantes}
+    writeln("El area de un circulo de radio 3 es 27: " + findArea(3));
+        
+
+end;
+
+procedure cambio(var x, y: integer);
+var
+   temp: integer;
+
+begin
+   temp := x;
+   x:= y;
+   y := temp;
+end;
+
+procedure validator(x,y:integer);
+begin
+	if(x=400) then
+		writeln("Paso por referencia OK");
+	else 
+		writeln("Paso por referencia no cool :(");
+end;
+
+procedure basicFunctions();
+var
+	cont:integer = 0;
+begin
+	while(cont<85) do
+	begin
+		case (cont) of
+			20, 40: 
+				begin
+					if(cont=20) then
+						writeln("Segundo Valor Correcto 50%" );
+					else
+						writeln("Tercer valor correcto 75%");
+					
+					cont:=cont*2-1;
+				end;
+			10 : 
+				begin
+					writeln("Primer Valor Correcto 25%" );
+					cont:=cont*2-1;
+				end;
+			15 : writeln("Error 1 en case");
+			30 : writeln("Error 2 en case");
+			50 : writeln("Multiples errores en case, 0");
+			80 : writeln("Todos los valores correctos, While, If y Case 100%");
+		end;
+		cont := cont+1;
+	end;
+end;
+
+function findArea(radius : integer):integer;
+begin
+    findArea := piMod*radius^2;
+end;
+
+function isPrimeBruteForce(number:integer):boolean;
+var
+    tmp : integer;
+begin
+    isPrimeBruteForce := true;
+    for tmp := 2 to number-1 do
+    begin
+        if ((number % tmp) = 0) then
+            begin
+                isPrimeBruteForce := false;
+                break;
+            end;            
+    end;
+    
+end;
+
+procedure printMat(var mat: array[0..20] of entero);
+var 
+    i: integer = 0;
+begin
+    writeln("Resultado esperado: [1,1,1,1,1,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,]\n Salida:");
+    write("[");
+    for i:= 0 to 19 do
+    begin
+        write(mat[i]+",");
+    end;
+    writeln("]");
+end;
+
+
+procedure validacionMatrices();
+var
+    dim1, dim2, dim3, dimAux, cont1, cont2, cont3, val, prime, total : integer;
+    mat: array[0..2,0..3,0..5] of integer;
+    matSup: array[0..3,0..5] of integer;
+    matInf: array[0..20] of integer;
+begin
+    dim1 := 2;
+    dim2 := 3;
+    dim3 := 5;
+    dimAux := 20;
+    val := 0;
+    total := 0;
+    for cont1:=0 to dimAux-1 do
+    begin
+        for prime:= val+1 to 500 do
+        begin
+            if isPrimeBruteForce(prime) then
+            begin                    
+                val := prime;
+                break;
+            end;                
+        end;
+        matInf[cont1] := prime;
+    end;
+    matSup[1] := matInf;
+    writeln("Deberia de imprimir 5 ceros,1,2,3,5,7 y 5 ceros");
+    for cont2 := 0 to dim2-1 do
+    begin
+        for cont3 := 0 to dim3-1 do
+        begin
+            writeln( matSup[cont2,cont3] );
+            matSup[cont2,cont3] := 1;            
+        end;
+    end;
+    printMat(matInf);
+    mat[1] := matSup;
+    for cont1 := 0 to dim1-1 do
+    begin
+        for cont2 := 0 to dim2-1 do
+        begin
+            for cont3 := 0 to dim3-1 do
+            begin
+                total := total + mat[cont1,cont2,cont3];
+            end;
+        end;
+    end;
+    write("Deberia ser 15: ");
+    writeln(total);        
+        
+end;    
+    
+procedure validacionEstructuras();
+begin
+    writeln("El tamano deberia ser 3 -> "+ Sizeof(Nodo));
+    writeln("El tamano deberia ser 2 -> "+ Sizeof(Estudiante));
+    ingresoValores();
+    
+end;
+
+
+
+procedure comienzo();   
+begin    
+    writeln("Validacion de expresiones");
+    validacionExpresiones();
+    writeln("Validacion de arreglos");
+    validacionMatrices();
+    writeln("Validacion de registros");
+    validacionEstructuras();        
+end;
+
+begin
+	comienzo();
+end.

@@ -1,0 +1,2 @@
+# DOSLang
+It is a compiler of a structured language, capable of receiving simple instructions such as variable assignments with data types, up to functions, objects and multidimensional arrays, using an LALR parser.
